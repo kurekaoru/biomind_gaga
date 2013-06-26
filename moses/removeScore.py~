@@ -1,5 +1,0 @@
-import sys
-
-I = open(sys.argv[1]).readlines()[0].split(' ')
-
-print I

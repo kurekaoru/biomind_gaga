@@ -1,5 +1,0 @@
-tp() {
-	awk '{for (i=1; i<=NF; i++) { arr[i]=arr[i]"\t"$i; }} END {for(i=1; i<=NF; i++) print arr[i]; }' $1
-}
-
-head -2 $1 | tail -1 | tp | shuf | tp
