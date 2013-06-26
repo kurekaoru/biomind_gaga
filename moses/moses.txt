@@ -1,0 +1,1 @@
+time moses -i test.tab -u out -j1

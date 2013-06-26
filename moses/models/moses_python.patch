@@ -1,0 +1,403 @@
+=== modified file 'opencog/comboreduct/combo/vertex.cc'
+--- opencog/comboreduct/combo/vertex.cc	2012-03-03 13:31:41 +0000
++++ opencog/comboreduct/combo/vertex.cc	2012-03-09 12:58:01 +0000
+@@ -27,12 +27,15 @@
+ #include <boost/range/algorithm/find.hpp>
+ #include "procedure_call.h"
+ #include <opencog/util/algorithm.h>
++#include <opencog/learning/moses/moses/types_python.h>
+ 
+ namespace opencog { namespace combo {
+ 
+ using namespace std;
+ using namespace boost;
+ 
++//bool moses::output_python;
++
+ // uncomment this to output a negative literal !$n instead of not($n)
+ #define ABBREVIATE_NEGATIVE_LITERAL
+ 
+@@ -130,6 +133,26 @@
+ ostream& operator<<(ostream& out, const opencog::combo::builtin& h)
+ {
+     using namespace opencog::combo;
++
++    if(::opencog::moses::output_python) {    
++        switch (h) {
++        case id::null_vertex:
++            return out << "null_vertex";
++        case id::logical_and:
++            return out << "ands";
++        case id::logical_or:
++            return out << "ors";
++        case id::logical_not:
++            return out << "not_";
++        case id::logical_true:
++            return out << "True";
++        case id::logical_false:
++            return out << "False";
++        default:
++            return out << "BUILTIN_UNKNOWN_HANDLE";
++        }
++    }
++    
+     switch (h) {
+     case id::null_vertex:
+         return out << "null_vertex";
+@@ -192,12 +215,19 @@
+ ostream& operator<<(ostream& out, const opencog::combo::argument& a)
+ {
+     using namespace opencog::combo;
++    
++    if(::opencog::moses::output_python) {
++        if (a.is_negated())        
++            return out << "not(i[" << -a.idx - 1 << "]),";
++        return out << "i[" << a.idx - 1 << "],";
++    }
++    
+ #ifdef ABBREVIATE_NEGATIVE_LITERAL
+     return ostream_abbreviate_literal(out, a);
+ #else
+     if (a.is_negated())        
+         return out << "not($" << -a.idx << ")";
+-    return out << "$" << a.idx;
++    return out << "$" << a.idx << vm;
+ #endif
+ }
+ 
+
+=== modified file 'opencog/learning/moses/main/moses_exec.cc'
+--- opencog/learning/moses/main/moses_exec.cc	2012-03-07 21:49:52 +0000
++++ opencog/learning/moses/main/moses_exec.cc	2012-03-09 12:59:12 +0000
+@@ -35,6 +35,8 @@
+ 
+ static const unsigned int max_filename_size = 255;
+ 
++bool output_python;
++
+ /**
+  * Display error message about unspecified combo tree and exit
+  */
+@@ -266,6 +268,7 @@
+     bool output_dominated = false;
+     bool output_eval_number;
+     bool output_with_labels;
++    bool output_python = false;
+     string output_file;
+     int max_gens;
+     string log_level;
+@@ -343,7 +346,12 @@
+          "instead of argument numbers. For instance "
+          "*(\"$price\" \"$temprature\") instead of *($1 $2). This only "
+          "works for data fitting problems where the data file contains "
+-         "labels in its header\n")
++         "labels in its header.\n")
++        ("python",
++         value<bool>(&output_python)->default_value(false),
++         "If 1, output the program(s) as python code instead of combo. "
++         "Best with -c1 option to return a single python module. Only "
++         "implemented for boolean programs currently.\n")
+         (opt_desc_str(output_file_opt).c_str(),
+          value<string>(&output_file)->default_value(""),
+          "File where to place the output. If empty, then output to stdout.\n")
+@@ -720,7 +728,8 @@
+                                             output_with_labels, opt_algo,
+                                             enable_cache, labels,
+                                             output_file, jobs, only_local,
+-                                            hc_widen_search, hc_single_step);
++                                            hc_widen_search, hc_single_step,
++                                            output_python);
+ 
+     // Continuous reduction rules used during search and representation
+     // building.
+
+=== modified file 'opencog/learning/moses/main/moses_exec.h'
+--- opencog/learning/moses/main/moses_exec.h	2012-03-07 23:20:21 +0000
++++ opencog/learning/moses/main/moses_exec.h	2012-03-09 12:30:19 +0000
+@@ -113,7 +113,8 @@
+                                      const jobs_t& _jobs,
+                                      bool _only_local,
+                                      bool _hc_widen_search,
+-                                     bool _hc_single_step) :
++                                     bool _hc_single_step,
++                                     bool _output_python) :
+         vm(_vm), result_count(_result_count), output_score(_output_score),
+         output_complexity(_output_complexity),
+         output_bscore(_output_bscore),
+@@ -125,7 +126,8 @@
+         output_file(_output_file),
+         jobs(_jobs), only_local(_only_local),
+         hc_widen_search(_hc_widen_search),
+-        hc_single_step(_hc_single_step) {}
++        hc_single_step(_hc_single_step),
++        output_python(_output_python) {}
+ 
+     const variables_map& vm;
+     long result_count;
+@@ -141,6 +143,7 @@
+     string output_file;
+     const jobs_t& jobs;
+     bool only_local;
++    bool output_python;
+ 
+     // Not really results, but we have nowhere else to put these...
+     bool hc_widen_search;
+@@ -185,7 +188,9 @@
+                         pa.result_count, pa.output_score,
+                         pa.output_complexity,
+                         pa.output_bscore,
+-                        pa.output_dominated);
++                        pa.output_dominated,
++                        pa.output_python); 
++
+         if (pa.output_eval_number)
+             ss << number_of_evals_str << ": " << metapop.n_evals() << std::endl;;
+         string res = (pa.output_with_labels && !pa.labels.empty()?
+
+=== modified file 'opencog/learning/moses/man/moses.1'
+--- opencog/learning/moses/man/moses.1	2012-03-03 00:28:43 +0000
++++ opencog/learning/moses/man/moses.1	2012-03-09 11:31:13 +0000
+@@ -635,7 +635,7 @@
+ .SH TODO
+ Finish documenting these aglo flags:  -M
+ .PP
+-These input flags: -b -G
++These input flags: -b -G --python
+ .PP
+ These operator/problem type flags: -p
+ 
+
+=== modified file 'opencog/learning/moses/moses/metapopulation.h'
+--- opencog/learning/moses/moses/metapopulation.h	2012-03-03 00:28:43 +0000
++++ opencog/learning/moses/moses/metapopulation.h	2012-03-08 09:21:27 +0000
+@@ -1148,12 +1148,13 @@
+                  bool output_score = true,
+                  bool output_complexity = false,
+                  bool output_bscore = false,
+-                 bool output_only_bests = false)
++                 bool output_only_bests = false,
++                 bool output_python = false)
+     {
+         if (!output_only_bests) {
+             for (; from != to && n != 0; ++from, n--) {
+                 ostream_bscored_combo_tree(out, *from, output_score,
+-                                           output_complexity, output_bscore);
++                                           output_complexity, output_bscore, output_python);
+             }
+             return out;
+         }
+@@ -1175,7 +1176,7 @@
+             const bscored_combo_tree& bt = *f;
+             if (best_score <= get_score(bt)) {
+                 ostream_bscored_combo_tree(out, *f, output_score,
+-                                           output_complexity, output_bscore);
++                                           output_complexity, output_bscore, output_python);
+             }
+         }
+         return out;
+@@ -1187,11 +1188,12 @@
+                  bool output_score = true,
+                  bool output_complexity = false,
+                  bool output_bscore = false,
+-                 bool output_only_bests = false)
++                 bool output_only_bests = false,
++                 bool output_python = false)
+     {
+         return ostream(out, begin(), end(),
+                        n, output_score, output_complexity,
+-                       output_bscore, output_only_bests);
++                       output_bscore, output_only_bests, output_python);
+     }
+ 
+     ///  hmmm, apparently it's ambiguous with the one below, strange
+
+=== modified file 'opencog/learning/moses/moses/types.h'
+--- opencog/learning/moses/moses/types.h	2012-03-02 11:10:32 +0000
++++ opencog/learning/moses/moses/types.h	2012-03-09 12:30:42 +0000
+@@ -36,6 +36,7 @@
+ #include <opencog/util/iostreamContainer.h>
+ 
+ #include <opencog/comboreduct/combo/vertex.h>
++#include "types_python.h"
+ #include "complexity.h"
+ 
+ namespace opencog { namespace moses {
+@@ -45,6 +46,8 @@
+ using boost::indirect_iterator;
+ using boost::transform_iterator;
+ 
++extern bool output_python;
++
+ /////////////////
+ // basic types //
+ /////////////////
+@@ -233,13 +236,18 @@
+ /**
+  * stream out a candidate along with their scores (optionally
+  * complexity and bscore).
++ *
++ * @param bool output_python if true, output is a python module instead of a combo program
+  */
+ template<typename Out>
+ Out& ostream_bscored_combo_tree(Out& out, const bscored_combo_tree& candidate,
+                                 bool output_score = true,
+                                 bool output_complexity = false,
+-                                bool output_bscore = false)
++                                bool output_bscore = false,
++                                bool output_python = false)
+ {
++    if(output_python) return ostream_bscored_combo_tree_python(out, candidate, output_score, output_complexity, output_bscore);
++
+     if(output_score)
+         out << std::setprecision(io_score_precision)
+             << get_score(candidate) << " ";
+@@ -253,6 +261,49 @@
+     return out;
+ }
+ 
++/**
++ * stream out a candidate along with their scores (optionally
++ * complexity and bscore) as a python module
++ */
++template<typename Out>
++Out& ostream_bscored_combo_tree_python(Out& out, const bscored_combo_tree& candidate,
++                                bool output_score = true,
++                                bool output_complexity = false,
++                                bool output_bscore = false)
++{
++    ::opencog::moses::output_python = true;
++    
++    out << std::endl 
++        << "#!/usr/bin/python" << std::endl 
++        << "from operator import *" << std::endl
++        << std::endl
++        << "#These functions allow multiple args instead of lists." << std::endl
++        << "def ors(*args):" << std::endl
++        << "    return any(args)" << std::endl
++        << std::endl
++        << "def ands(*args):" << std::endl
++        << "    return all(args)" << std::endl
++        << std::endl;
++ 
++    if(output_score) {
++        out << "#score: " << std::setprecision(io_score_precision) << get_score(candidate) << std::endl;
++    }
++    if(output_complexity) {
++        out << " #complexity: " << get_complexity(candidate) << std::endl;
++    }
++    
++    out << std::endl << "def moses_eval(i):" << std::endl << "    return ";
++    out << get_tree(candidate) << std::endl;
++    
++    if(output_bscore) {    
++        out << std::endl<< "#bscore: ";
++        ostream_behavioral_score(out, get_bscore(candidate));
++        out << std::endl;
++    }
++    return out;
++}
++
++
+ inline std::ostream& operator<<(std::ostream& out,
+                                 const moses::composite_score& ts)
+ {
+
+=== added file 'opencog/learning/moses/moses/types_python.cc'
+--- opencog/learning/moses/moses/types_python.cc	1970-01-01 00:00:00 +0000
++++ opencog/learning/moses/moses/types_python.cc	2012-03-09 11:40:15 +0000
+@@ -0,0 +1,31 @@
++/*
++ * opencog/learning/moses/moses/learning/types.cc
++ *
++ * Derived from code Copyright (C) 2002-2008 Novamente LLC
++ * All Rights Reserved
++ *
++ * Written by Matt Chapman <Matt@NinjitsuWeb.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU Affero General Public License v3 as
++ * published by the Free Software Foundation and including the exceptions
++ * at http://opencog.org/wiki/Licenses
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU Affero General Public License
++ * along with this program; if not, write to:
++ * Free Software Foundation, Inc.,
++ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++ */
++
++#include "types_python.h"
++
++namespace opencog { namespace moses {
++    
++bool output_python;
++
++}}
+\ No newline at end of file
+
+=== added file 'opencog/learning/moses/moses/types_python.h'
+--- opencog/learning/moses/moses/types_python.h	1970-01-01 00:00:00 +0000
++++ opencog/learning/moses/moses/types_python.h	2012-03-09 11:39:38 +0000
+@@ -0,0 +1,28 @@
++/*
++ * opencog/learning/moses/moses/learning/types.cc
++ *
++ * Derived from code Copyright (C) 2002-2008 Novamente LLC
++ * All Rights Reserved
++ *
++ * Written by Matt Chapman <Matt@NinjitsuWeb.com>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU Affero General Public License v3 as
++ * published by the Free Software Foundation and including the exceptions
++ * at http://opencog.org/wiki/Licenses
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU Affero General Public License
++ * along with this program; if not, write to:
++ * Free Software Foundation, Inc.,
++ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++ */
++
++
++namespace opencog { namespace moses {
++  extern bool output_python;
++}}
+\ No newline at end of file
+
+=== modified file 'opencog/util/tree.h'
+--- opencog/util/tree.h	2011-12-17 00:28:42 +0000
++++ opencog/util/tree.h	2012-03-09 12:52:54 +0000
+@@ -75,12 +75,15 @@
+ #include <exception>
+ #include <boost/lexical_cast.hpp>
+ #include <boost/iterator/counting_iterator.hpp>
++#include <opencog/learning/moses/moses/types_python.h>
+ 
+ // HP-style construct/destroy have gone from the standard,
+ // so here is a copy.
+ 
+ namespace opencog {
+ 
++extern bool moses::output_python;
++
+ namespace kp {
+ 
+ template <class T1, class T2>
+@@ -3194,6 +3197,7 @@
+             ss << subtree_to_string(sib);
+         }
+         ss << ")";
++        if (::opencog::moses::output_python) ss << ",";
+     }
+     return ss.str();
+ }
+

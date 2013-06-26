@@ -1,0 +1,18 @@
+tp() {
+	awk '{for (i=1; i<=NF; i++) { arr[i] = arr[i]"\t"$i; }} END { for(i=1; i<=NF; i++) print arr[i]; }' $1
+}
+
+cp ../base/$1 ../temp/temp.tab
+
+head -2 ../base/$1 | tail -1 | tp | shuf | tp > ../temp/labels.tab
+
+export X=$(head -2 ../base/$1 | tail -1 | tp | shuf | tp)
+
+#export X=$(head -2 ../base/w2.tab | tail -1 | tp | shuf | tp)
+
+#echo $X;
+
+sed "2 c\\$X" -i ../temp/temp.tab
+
+#sed "2 c\\$X" ../temp/temp.tab > ../temp/temp.tab
+

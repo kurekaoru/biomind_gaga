@@ -1,0 +1,51 @@
+[2012-10-04 09:53:07:695] [INFO] moses version 3.2.8 (revno 7636)
+[2012-10-04 09:53:07:695] [INFO] Command line: /media/image/moses/X/moses3/learning/moses/main/moses -i nand.tab
+[2012-10-04 09:53:07:695] [INFO] hostname: kaoru.localdomain
+[2012-10-04 09:53:07:695] [INFO] Read data file nand.tab
+[2012-10-04 09:53:07:696] [INFO] Inferred arity = 2
+[2012-10-04 09:53:07:697] [INFO] Inferred data signature ->(boolean boolean boolean) 
+[2012-10-04 09:53:07:697] [INFO] Inferred output type: boolean
+[2012-10-04 09:53:07:697] [INFO] Alphabet size = 5 output = boolean
+[2012-10-04 09:53:07:697] [INFO] BScore complexity ratio = 3.5
+[2012-10-04 09:53:07:697] [INFO] Target score = -1.000000
+[2012-10-04 09:53:07:697] [INFO] Cache composite scores
+[2012-10-04 09:53:07:698] [INFO] MOSES starts, max_evals=10000 max_gens=-1
+[2012-10-04 09:53:07:698] [INFO] Stats:# 
+Stats:# Stats are tab-separated, ready for graphing.  Column explanation:
+Stats:# 
+Stats:# gen is the generation number.
+Stats:# num_evals is the number of scoring function evaluations so far.
+Stats:# metapop_size is the size of the metapopulation.
+Stats:# best_score is the highest raw score seen, of all exemplars.
+Stats:# complexity is in bits, of the highest-composite score exemplar.
+Stats:# field_set_size is the ESTIMATED number of bits in all the knobs.
+Stats:# optim_steps is the number of steps the optimizer took.
+Stats:# over_budget is bool, T if search exceeded scoring func eval budget.
+Stats:# 
+Stats:# gen	num_evals	metapop_size	best_score	complexity	field_set_size	optim_steps	over_budgetStats:# 
+
+
+[2012-10-04 09:53:07:700] [INFO] Total number of field specs: 16
+[2012-10-04 09:53:07:700] [INFO] Number of disc knobs mapped: 16
+[2012-10-04 09:53:07:700] [INFO] Number of contin knobs mapped: 0
+[2012-10-04 09:53:07:700] [INFO] Demes: # deme_count	iteration	total_steps	total_evals	microseconds	new_instances	num_instances	num_evals	has_improved	best_weighted_score	delta_weighted	best_raw	delta_raw	complexity
+[2012-10-04 09:53:07:700] [INFO] Demes: 1	1	1	1	72	1	1	1	1	-2	3.40282e+38	-2	3.40282e+38	0
+[2012-10-04 09:53:07:701] [INFO] Demes: 1	2	2	33	1561	32	33	33	1	-1.28571	0.714286	-1	1	1
+[2012-10-04 09:53:07:703] [INFO] Expansion 1 total number of evaluations so far: 33
+[2012-10-04 09:53:07:703] [INFO] The following candidate(s) have the best score [score=-1, complexity=1, complexity penalty=0.2857142984867095947265625, diversity penalty=0]
+[2012-10-04 09:53:07:703] [INFO] !$2 
+[2012-10-04 09:53:07:703] [INFO] Stats: 1	33	13	-1	1	25	2	0
+[2012-10-04 09:53:07:703] [INFO] MOSES ends
+[2012-10-04 09:53:07:703] [INFO] Best candidates (preceded by its score):
+-1 !$2 
+-1 and($1 !$2) 
+-1 or(!$1 !$2) 
+-2 true 
+-2 !$1 
+-2 $1 
+-2 and(!$1 !$2) 
+-2 and(!$1 $2) 
+-2 or($1 !$2) 
+-2 or($1 $2) 
+
+[2012-10-04 09:53:07:703] [INFO] Cache composite scores hits=21 misses=13

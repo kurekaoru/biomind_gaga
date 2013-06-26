@@ -1,0 +1,5 @@
+TODO
+
+# Replace SNP binarization protocol to SNP_binarization	100%
+# Replace foldSelectSNPs block by original script	100%
+# Enable microarray handling				5%
